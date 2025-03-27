@@ -1,0 +1,89 @@
+# Security Configuration
+
+# API Rate Limiting
+rate_limits:
+  blockvision_api:
+    requests_per_minute: 100
+    burst_size: 10
+  sui_rpc:
+    requests_per_minute: 1000
+    burst_size: 50
+  twitter_api:
+    requests_per_3min: 300
+    burst_size: 20
+
+# Authentication
+auth:
+  jwt_secret: ${JWT_SECRET}
+  token_expiry: 24h
+  refresh_token_expiry: 7d
+
+# Encryption
+encryption:
+  algorithm: "AES-256-GCM"
+  key_rotation_days: 30
+  salt_rounds: 12
+
+# Input Validation
+validation:
+  max_input_length: 1000
+  allowed_characters: "^[a-zA-Z0-9_@#$%^&*()!?.,:;'\"- ]+$"
+  max_file_size_mb: 10
+
+# Security Headers
+headers:
+  content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+  x_frame_options: "DENY"
+  x_content_type_options: "nosniff"
+  strict_transport_security: "max-age=31536000; includeSubDomains"
+  referrer_policy: "strict-origin-when-cross-origin"
+
+# CORS
+cors:
+  allowed_origins:
+    - "https://yourdomain.com"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+  allowed_headers:
+    - "Authorization"
+    - "Content-Type"
+  max_age: 86400
+
+# Logging
+logging:
+  sensitive_fields:
+    - "password"
+    - "private_key"
+    - "api_key"
+  log_level: "INFO"
+  retention_days: 30
+
+# Monitoring
+monitoring:
+  health_check_interval: 30s
+  metrics_endpoint: "/metrics"
+  alert_thresholds:
+    cpu_percent: 80
+    memory_percent: 80
+    disk_percent: 85
+    error_rate: 5
+
+# Backup
+backup:
+  enabled: true
+  schedule: "0 0 * * *"  # Daily at midnight
+  retention_days: 30
+  encryption_enabled: true
+
+# Network Security
+network:
+  allowed_ips:
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+    - "192.168.0.0/16"
+  max_connections: 1000
+  connection_timeout: 30s
+  keep_alive_timeout: 60s 

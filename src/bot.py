@@ -6,7 +6,7 @@ from src.twitter.tracker import TwitterTracker
 from src.twitter.memecoin_engagement import MemecoinEngagement
 from src.utils.ai_helper import AIHelper
 from src.blockchain.sui_client import SuiClient
-from config.settings import (
+from src.config.settings import (
     TWEET_ANALYSIS_INTERVAL,
     ONCHAIN_UPDATE_INTERVAL,
     GIVEAWAY_INTERVAL,

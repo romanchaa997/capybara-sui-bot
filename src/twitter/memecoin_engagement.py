@@ -22,9 +22,13 @@ class MemecoinEngagement:
     def __init__(self):
         """Initialize Twitter API client with authentication."""
         try:
-            auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
-            auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-            self.api = tweepy.API(auth, wait_on_rate_limit=True)
+            self.client = tweepy.Client(
+                consumer_key=TWITTER_API_KEY,
+                consumer_secret=TWITTER_API_SECRET,
+                access_token=TWITTER_ACCESS_TOKEN,
+                access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+                wait_on_rate_limit=True
+            )
             logger.info("Twitter API client initialized successfully for memecoin engagement")
         except Exception as e:
             logger.error(f"Failed to initialize Twitter API client: {str(e)}")
@@ -33,16 +37,31 @@ class MemecoinEngagement:
     def get_community_tweets(self, username: str, count: int = 5) -> List[Dict[str, Any]]:
         """Fetch recent tweets from a memecoin community account."""
         try:
-            tweets = self.api.user_timeline(screen_name=username, count=count, tweet_mode="extended")
+            # First, get the user ID from the username
+            user = self.client.get_user(username=username)
+            if not user.data:
+                logger.error(f"User {username} not found")
+                return []
+
+            user_id = user.data.id
+            tweets = self.client.get_users_tweets(
+                id=user_id,
+                max_results=count,
+                tweet_fields=['created_at', 'public_metrics']
+            )
+
+            if not tweets.data:
+                return []
+
             return [{
                 'id': tweet.id,
-                'text': tweet.full_text,
+                'text': tweet.text,
                 'created_at': tweet.created_at,
-                'likes': tweet.favorite_count,
-                'retweets': tweet.retweet_count,
-                'replies': tweet.reply_count if hasattr(tweet, 'reply_count') else 0,
+                'likes': tweet.public_metrics['like_count'],
+                'retweets': tweet.public_metrics['retweet_count'],
+                'replies': tweet.public_metrics['reply_count'],
                 'user': username
-            } for tweet in tweets]
+            } for tweet in tweets.data]
         except Exception as e:
             logger.error(f"Error fetching tweets for {username}: {str(e)}")
             return []
@@ -50,15 +69,35 @@ class MemecoinEngagement:
     def get_community_mentions(self, username: str, count: int = 5) -> List[Dict[str, Any]]:
         """Fetch recent mentions of a memecoin community."""
         try:
-            mentions = self.api.mentions_timeline(count=count, tweet_mode="extended")
+            # First, get the user ID from the username
+            user = self.client.get_user(username=username)
+            if not user.data:
+                logger.error(f"User {username} not found")
+                return []
+
+            user_id = user.data.id
+            mentions = self.client.get_users_mentions(
+                id=user_id,
+                max_results=count,
+                tweet_fields=['created_at', 'public_metrics', 'author_id']
+            )
+
+            if not mentions.data:
+                return []
+
+            # Get user information for authors
+            author_ids = [tweet.author_id for tweet in mentions.data]
+            users = self.client.get_users(ids=author_ids)
+            user_map = {user.id: user.username for user in users.data} if users.data else {}
+
             return [{
                 'id': mention.id,
-                'text': mention.full_text,
+                'text': mention.text,
                 'created_at': mention.created_at,
-                'user': mention.user.screen_name,
-                'likes': mention.favorite_count,
-                'retweets': mention.retweet_count
-            } for mention in mentions if username.lower() in mention.full_text.lower()]
+                'user': user_map.get(mention.author_id, 'unknown'),
+                'likes': mention.public_metrics['like_count'],
+                'retweets': mention.public_metrics['retweet_count']
+            } for mention in mentions.data]
         except Exception as e:
             logger.error(f"Error fetching mentions for {username}: {str(e)}")
             return []
@@ -76,15 +115,28 @@ class MemecoinEngagement:
             # Search for tweets with these hashtags
             hashtag_tweets = []
             for hashtag in hashtags:
-                search_results = self.api.search_tweets(q=hashtag, count=count, tweet_mode="extended")
+                search_results = self.client.search_recent_tweets(
+                    query=hashtag,
+                    max_results=count,
+                    tweet_fields=['created_at', 'public_metrics', 'author_id']
+                )
+                
+                if not search_results.data:
+                    continue
+
+                # Get user information for authors
+                author_ids = [tweet.author_id for tweet in search_results.data]
+                users = self.client.get_users(ids=author_ids)
+                user_map = {user.id: user.username for user in users.data} if users.data else {}
+
                 hashtag_tweets.extend([{
                     'id': tweet.id,
-                    'text': tweet.full_text,
+                    'text': tweet.text,
                     'created_at': tweet.created_at,
-                    'user': tweet.user.screen_name,
-                    'likes': tweet.favorite_count,
-                    'retweets': tweet.retweet_count
-                } for tweet in search_results])
+                    'user': user_map.get(tweet.author_id, 'unknown'),
+                    'likes': tweet.public_metrics['like_count'],
+                    'retweets': tweet.public_metrics['retweet_count']
+                } for tweet in search_results.data])
             
             return hashtag_tweets[:count]  # Limit to requested count
         except Exception as e:
@@ -124,10 +176,9 @@ class MemecoinEngagement:
     def post_reply(self, tweet_id: int, reply_text: str) -> bool:
         """Post a reply to a specific tweet."""
         try:
-            self.api.update_status(
-                status=reply_text,
-                in_reply_to_status_id=tweet_id,
-                auto_populate_reply_metadata=True
+            self.client.create_tweet(
+                text=reply_text,
+                in_reply_to_tweet_id=tweet_id
             )
             logger.info(f"Successfully posted reply to tweet {tweet_id}")
             return True
@@ -138,7 +189,7 @@ class MemecoinEngagement:
     def like_tweet(self, tweet_id: int) -> bool:
         """Like a specific tweet."""
         try:
-            self.api.create_favorite(tweet_id)
+            self.client.like(tweet_id)
             logger.info(f"Successfully liked tweet {tweet_id}")
             return True
         except Exception as e:
@@ -148,7 +199,7 @@ class MemecoinEngagement:
     def retweet(self, tweet_id: int) -> bool:
         """Retweet a specific tweet."""
         try:
-            self.api.retweet(tweet_id)
+            self.client.retweet(tweet_id)
             logger.info(f"Successfully retweeted tweet {tweet_id}")
             return True
         except Exception as e:

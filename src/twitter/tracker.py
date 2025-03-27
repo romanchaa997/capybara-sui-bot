@@ -22,9 +22,13 @@ class TwitterTracker:
     def __init__(self):
         """Initialize Twitter API client with authentication."""
         try:
-            auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
-            auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
-            self.api = tweepy.API(auth, wait_on_rate_limit=True)
+            self.client = tweepy.Client(
+                consumer_key=TWITTER_API_KEY,
+                consumer_secret=TWITTER_API_SECRET,
+                access_token=TWITTER_ACCESS_TOKEN,
+                access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+                wait_on_rate_limit=True
+            )
             logger.info("Twitter API client initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Twitter API client: {str(e)}")
@@ -33,16 +37,31 @@ class TwitterTracker:
     def get_user_tweets(self, username: str, count: int = MAX_TWEETS_PER_ACCOUNT) -> List[Dict[str, Any]]:
         """Fetch recent tweets from a specific user."""
         try:
-            tweets = self.api.user_timeline(screen_name=username, count=count, tweet_mode="extended")
+            # First, get the user ID from the username
+            user = self.client.get_user(username=username)
+            if not user.data:
+                logger.error(f"User {username} not found")
+                return []
+
+            user_id = user.data.id
+            tweets = self.client.get_users_tweets(
+                id=user_id,
+                max_results=count,
+                tweet_fields=['created_at', 'public_metrics']
+            )
+
+            if not tweets.data:
+                return []
+
             return [{
                 'id': tweet.id,
-                'text': tweet.full_text,
+                'text': tweet.text,
                 'created_at': tweet.created_at,
-                'likes': tweet.favorite_count,
-                'retweets': tweet.retweet_count,
-                'replies': tweet.reply_count if hasattr(tweet, 'reply_count') else 0,
+                'likes': tweet.public_metrics['like_count'],
+                'retweets': tweet.public_metrics['retweet_count'],
+                'replies': tweet.public_metrics['reply_count'],
                 'user': username
-            } for tweet in tweets]
+            } for tweet in tweets.data]
         except Exception as e:
             logger.error(f"Error fetching tweets for {username}: {str(e)}")
             return []
@@ -69,6 +88,15 @@ class TwitterTracker:
 
     def get_engagement_metrics(self, tweets: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Calculate engagement metrics for the analyzed tweets."""
+        if not tweets:
+            return {
+                'total_tweets': 0,
+                'total_likes': 0,
+                'total_retweets': 0,
+                'total_replies': 0,
+                'avg_engagement': 0
+            }
+
         total_likes = sum(tweet['likes'] for tweet in tweets)
         total_retweets = sum(tweet['retweets'] for tweet in tweets)
         total_replies = sum(tweet['replies'] for tweet in tweets)
@@ -78,7 +106,7 @@ class TwitterTracker:
             'total_likes': total_likes,
             'total_retweets': total_retweets,
             'total_replies': total_replies,
-            'avg_engagement': (total_likes + total_retweets + total_replies) / len(tweets) if tweets else 0
+            'avg_engagement': (total_likes + total_retweets + total_replies) / len(tweets)
         }
 
     def get_active_accounts(self, hours: int = 24) -> List[str]:

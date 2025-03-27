@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "lib": ["es2020", "dom"],
+    "declaration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "paths": {
+      "@mysten/sui.js": ["./node_modules/@mysten/sui.js"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["packages/**/*"],
+  "exclude": ["node_modules", "**/dist/**", "**/*.test.ts"],
+  "references": [
+    { "path": "./packages/core" }
+  ]
+} 

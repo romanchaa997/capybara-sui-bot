@@ -1,3 +1,7 @@
+"""
+Configuration settings for the Capybara Sui Bot.
+"""
+
 import os
 from dotenv import load_dotenv
 
@@ -14,7 +18,7 @@ TWITTER_ACCESS_TOKEN_SECRET = os.getenv('TWITTER_ACCESS_TOKEN_SECRET')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Sui RPC URL
-SUI_RPC_URL = os.getenv('SUI_RPC_URL')
+SUI_RPC_URL = os.getenv("SUI_RPC_URL", "https://sui-mainnet-rpc.allthatnode.com")
 
 # List of Sui-related accounts to follow and analyze
 SUI_ACCOUNTS = [
@@ -60,9 +64,28 @@ MEMECOIN_COMMUNITIES = [
     'zen_frogs'
 ]
 
-# API Endpoints
-BLOCKVISION_API_BASE = 'https://blockvision.org/api'
-SUIVISION_API_BASE = 'https://suivision.xyz/api'
+# API endpoints
+BLOCKVISION_API_BASE = os.getenv(
+    "BLOCKVISION_API_BASE",
+    "https://api.blockvision.org/v1"
+)
+SUIVISION_API_BASE = os.getenv(
+    "SUIVISION_API_BASE",
+    "https://api.suivision.io/v1"
+)
+
+# API keys (if needed)
+BLOCKVISION_API_KEY = os.getenv("BLOCKVISION_API_KEY", "")
+SUIVISION_API_KEY = os.getenv("SUIVISION_API_KEY", "")
+
+# Price API settings
+PRICE_UPDATE_INTERVAL = int(os.getenv("PRICE_UPDATE_INTERVAL", "60"))  # seconds
+PRICE_HISTORY_DAYS = int(os.getenv("PRICE_HISTORY_DAYS", "7"))
+PRICE_CHANGE_HOURS = int(os.getenv("PRICE_CHANGE_HOURS", "24"))
+
+# Logging settings
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 # Analysis Settings
 TWEET_ANALYSIS_INTERVAL = 3600  # 1 hour in seconds

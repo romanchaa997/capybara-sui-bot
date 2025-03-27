@@ -1,0 +1,24 @@
+# Twitter API Configuration
+twitter:
+  api_key: Bx067AAjLi6yIR0mK58c60ysW
+  api_secret: 6yLm2BmHnipN5NCxKuhrgyCSTX4tIa8SQlPtWZafl4lVJK9suQ
+  access_token: 1451170119309201408-Go26uiSOCjeinFpGP6tsqTbEpH6vpY
+  access_token_secret: Hb7WxQGdTd2ksb6IR0txA3k8k9lblZkpKomIPuh0U2jKx
+
+# Sui Blockchain Configuration
+sui:
+  rpc_url: "YOUR_SUI_RPC_URL"
+  wallet_address: "YOUR_SUI_WALLET_ADDRESS"
+  private_key: "YOUR_SUI_PRIVATE_KEY"
+
+# Blockvision API Configuration
+blockvision:
+  api_key: "2umcb5rwcCgPhh4C3FzJHvHiOng"
+
+# Bot Settings
+bot:
+  post_interval: 300  # 5 minutes between posts
+  giveaway_interval: 86400  # 24 hours between giveaways
+  winners_count: 5
+  reward_amount: 1000000  # 1 SUI
+  reward_type: "sui"  # or "nft" 

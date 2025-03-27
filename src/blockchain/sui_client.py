@@ -2,7 +2,7 @@ import aiohttp
 import logging
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
-from config.settings import (
+from src.config.settings import (
     SUI_RPC_URL,
     BLOCKVISION_API_BASE,
     SUIVISION_API_BASE
@@ -156,4 +156,111 @@ class SuiClient:
                     return 0.0
         except Exception as e:
             logger.error(f"Error fetching token price: {str(e)}")
-            return 0.0 
+            return 0.0
+
+    async def get_token_price_history(self, token_address: str, days: int = 7) -> List[Dict[str, Any]]:
+        """Get historical price data for a token.
+        
+        Args:
+            token_address: The token's contract address
+            days: Number of days of historical data to fetch
+            
+        Returns:
+            List of dicts containing timestamp and price data
+        """
+        try:
+            async with self.session.get(
+                f"{self.suivision_api}/coins/price/history/{token_address}",
+                params={"days": days}
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get('history', [])
+                else:
+                    logger.error(f"Failed to fetch token price history: {response.status}")
+                    return []
+        except Exception as e:
+            logger.error(f"Error fetching token price history: {str(e)}")
+            return []
+
+    async def get_token_price_change(self, token_address: str, hours: int = 24) -> Dict[str, float]:
+        """Get price change percentage for a token over specified hours.
+        
+        Args:
+            token_address: The token's contract address
+            hours: Time period in hours
+            
+        Returns:
+            Dict containing price change percentage and current price
+        """
+        try:
+            async with self.session.get(
+                f"{self.suivision_api}/coins/price/change/{token_address}",
+                params={"hours": hours}
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "price_change_percent": float(data.get('price_change_percent', 0)),
+                        "current_price": float(data.get('current_price', 0))
+                    }
+                else:
+                    logger.error(f"Failed to fetch token price change: {response.status}")
+                    return {"price_change_percent": 0, "current_price": 0}
+        except Exception as e:
+            logger.error(f"Error fetching token price change: {str(e)}")
+            return {"price_change_percent": 0, "current_price": 0}
+
+    async def get_multiple_token_prices(self, token_addresses: List[str]) -> Dict[str, float]:
+        """Get current prices for multiple tokens in a single API call.
+        
+        Args:
+            token_addresses: List of token contract addresses
+            
+        Returns:
+            Dict mapping token addresses to their current prices
+        """
+        try:
+            async with self.session.post(
+                f"{self.suivision_api}/coins/prices/batch",
+                json={"tokens": token_addresses}
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {addr: float(price) for addr, price in data.get('prices', {}).items()}
+                else:
+                    logger.error(f"Failed to fetch multiple token prices: {response.status}")
+                    return {}
+        except Exception as e:
+            logger.error(f"Error fetching multiple token prices: {str(e)}")
+            return {}
+
+    async def get_price_alerts(self, token_address: str, price_target: float, 
+                             is_above: bool = True) -> Dict[str, Any]:
+        """Set up a price alert for a token.
+        
+        Args:
+            token_address: The token's contract address
+            price_target: Target price to monitor
+            is_above: True to alert when price goes above target, False for below
+            
+        Returns:
+            Dict containing alert status and details
+        """
+        try:
+            async with self.session.post(
+                f"{self.suivision_api}/coins/price/alert",
+                json={
+                    "token_address": token_address,
+                    "price_target": price_target,
+                    "is_above": is_above
+                }
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    logger.error(f"Failed to set price alert: {response.status}")
+                    return {"status": "error", "message": "Failed to set alert"}
+        except Exception as e:
+            logger.error(f"Error setting price alert: {str(e)}")
+            return {"status": "error", "message": str(e)} 
